@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title id="page-title">MORADA DO SOL — Cadastros</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { font-family:'DM Sans',sans-serif; box-sizing:border-box; }
+    body { background:#f1f5f9; margin:0; }
+    .navbar { background:#0d1829; color:#fff; }
+    table { border-collapse:collapse; width:100%; }
+    th { background:#1e293b; color:#94a3b8; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:10px 12px; text-align:left; cursor:pointer; user-select:none; }
+    th:hover { background:#293548; }
+    td { padding:10px 12px; border-bottom:1px solid #e2e8f0; font-size:13px; }
+    tr:hover td { background:#f8fafc; }
+    .btn-sm { font-size:11px; padding:4px 10px; border-radius:5px; border:none; cursor:pointer; font-weight:500; transition:opacity .15s; }
+    .btn-sm:hover { opacity:.85; }
+    .btn-edit   { background:#3b82f6; color:#fff; }
+    .btn-delete { background:#ef4444; color:#fff; }
+    .spinner { width:20px;height:20px;border:2px solid #e2e8f0;border-top-color:#3388f5;border-radius:50%;animation:spin .7s linear infinite;margin:40px auto; }
+    @keyframes spin { to{transform:rotate(360deg)}}
+    .modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;display:flex;align-items:center;justify-content:center; }
+    .modal-box { background:#fff;border-radius:16px;padding:28px;max-width:500px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3); }
+    .field-label { font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px; }
+    .field-input { width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:13px;color:#1e293b;background:#fff;outline:none;transition:all .2s; }
+    .field-input:focus { border-color:#3388f5;box-shadow:0 0 0 3px rgba(51,136,245,.12); }
+    .btn-action { display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s; }
+    .btn-primary { background:linear-gradient(135deg,#1a6bea,#3388f5);color:#fff;box-shadow:0 2px 10px rgba(51,136,245,.3); }
+    .btn-primary:hover:not(:disabled) { transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:.6;cursor:not-allowed; }
+    .btn-secondary { background:#fff;color:#475569;border:1px solid #e2e8f0; }
+    .btn-secondary:hover { background:#f8fafc; }
+    .alert-error { background:#fef2f2;border:1px solid#fecaca;color:#dc2626;border-radius:10px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:8px;margin-bottom:12px; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+    .fade-in { animation:fadeIn .2s ease both; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+const API = 'http://reserva.imbmoradadosol.online/api';
+function getToken() { return localStorage.getItem('iw_token'); }
+function authHeaders(){ return {'Content-Type':'application/json', Authorization:`Bearer ${getToken()}`}; }
+
+// Configuração por tipo de cadastro
+const CONFIGS = {
+  tipos: {
+    title: 'Imóveis TIPOS',
+    apiPath: '/tipos',
+    columns: [
+      {key:'sigla', label:'Sigla', sortable:true},
+      {key:'descricao', label:'Descrição', sortable:true},
+    ],
+    formFields: [
+      {key:'sigla', label:'Sigla', type:'text', required:true, maxLength:10, transform: v=>v.toUpperCase()},
+      {key:'descricao', label:'Descrição', type:'text', required:true, maxLength:100},
+    ],
+  },
+  municipios: {
+    title: 'Municípios/UF',
+    apiPath: '/municipios',
+    columns: [
+      {key:'nome', label:'Nome', sortable:true},
+      {key:'uf', label:'UF', sortable:true},
+    ],
+    formFields: [
+      {key:'nome', label:'Nome', type:'text', required:true, maxLength:150},
+      {key:'uf', label:'UF', type:'text', required:true, maxLength:2, transform: v=>v.toUpperCase()},
+    ],
+  },
+  bancos: {
+    title: 'Bancos',
+    apiPath: '/bancos',
+    columns: [
+      {key:'numero', label:'Numero Banco', sortable:true},
+      {key:'nome_curto', label:'Nome Curto', sortable:true},
+      {key:'razao_social', label:'Razão Social', sortable:true},
+    ],
+    formFields: [
+      {key:'numero', label:'Numero Banco', type:'text', required:true, maxLength:10},
+      {key:'nome_curto', label:'Nome Curto', type:'text', required:true, maxLength:100},
+      {key:'razao_social', label:'Razão Social', type:'text', maxLength:255},
+    ],
+  },
+};
+
+function Navbar() {
+  const [cadastrosOpen, setCadastrosOpen] = useState(false);
+  const [diversosOpen, setDiversosOpen]   = useState(false);
+  const cadastrosRef = useRef(null);
+  const diversosRef  = useRef(null);
+  const user = JSON.parse(localStorage.getItem('iw_user') || '{}');
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (cadastrosRef.current && !cadastrosRef.current.contains(e.target)) setCadastrosOpen(false);
+      if (diversosRef.current  && !diversosRef.current.contains(e.target))  setDiversosOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const menuItems = [
+    { label: 'Reservas',   href: './reservas.html' },
+    { label: 'Imóveis',    href: './imoveis.html' },
+    { label: 'Pessoas',    href: './pessoas.html' },
+  ];
+
+  const cadastrosItems = [
+    { label: 'Imóveis Tipos', href: './cadastros.html?tipo=tipos' },
+    { label: 'Municípios/UF', href: './cadastros.html?tipo=municipios' },
+    { label: 'Bancos',        href: './cadastros.html?tipo=bancos' },
+  ];
+
+  const diversosItems = [
+    { label: 'Limpeza',   href: './limpeza-list.html' },
+  ];
+
+  return (
+    <nav className="navbar px-6 py-3 flex items-center justify-between shadow-lg">
+      <div className="flex items-center gap-6">
+        <a href="./login.html" className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:'linear-gradient(135deg,#1a6bea,#3388f5)'}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <span style={{fontFamily:'Syne,sans-serif',fontWeight:800}} className="text-sm text-white">
+            Morada do Sol
+          </span>
+        </a>
+        <div className="hidden md:flex items-center gap-1">
+          {menuItems.map(item => (
+            <a key={item.label} href={item.href}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${item.label==='Cadastros'?'text-blue-400':'text-slate-400 hover:text-white hover:bg-white/10'}`}>
+              {item.label}
+            </a>
+          ))}
+          <div className="relative" ref={cadastrosRef}>
+            <button onClick={() => setCadastrosOpen(v => !v)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1">
+              Cadastros
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                style={{transform: cadastrosOpen ? 'rotate(180deg)' : 'rotate(0)', transition:'transform .2s'}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {cadastrosOpen && (
+              <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[160px] z-50"
+                style={{animation:'fadeIn .15s ease'}}>
+                {cadastrosItems.map(item => (
+                  <a key={item.label} href={item.href}
+                    className="block px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors font-medium">
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="relative" ref={diversosRef}>
+            <button onClick={() => setDiversosOpen(v => !v)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1">
+              Diversos
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                style={{transform: diversosOpen ? 'rotate(180deg)' : 'rotate(0)', transition:'transform .2s'}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {diversosOpen && (
+              <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[160px] z-50"
+                style={{animation:'fadeIn .15s ease'}}>
+                {diversosItems.map(item => (
+                  <a key={item.label} href={item.href}
+                    className="block px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors font-medium">
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-slate-400">{user.email}</span>
+        <button onClick={() => { localStorage.clear(); window.location.href='./login.html'; }}
+          className="text-xs px-3 py-1.5 rounded-lg bg-white/10 text-slate-300 hover:bg-white/20 transition-colors">Sair</button>
+      </div>
+    </nav>
+  );
+}
+
+function FormModal({ config, item, onClose, onSave }) {
+  const [form, setForm] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (item) {
+      setForm(item);
+    } else {
+      const initial = {};
+      config.formFields.forEach(f => initial[f.key] = '');
+      setForm(initial);
+    }
+  }, [item, config]);
+
+  function set(key, value, transform) {
+    setForm(prev => ({ ...prev, [key]: transform ? transform(value) : value }));
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const missing = config.formFields.filter(f => f.required && !form[f.key]);
+    if (missing.length > 0) {
+      setError(`Preencha: ${missing.map(f => f.label).join(', ')}`);
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const url = `${API}${config.apiPath}${item ? `/${item.id}` : ''}`;
+      const method = item ? 'PUT' : 'POST';
+      const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(form) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Erro ao salvar.');
+      onSave();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box fade-in" onClick={e=>e.stopPropagation()}>
+        <h2 className="text-lg font-bold text-slate-800 mb-4">{item ? 'Editar' : 'Novo'}</h2>
+        <form onSubmit={handleSubmit}>
+          {config.formFields.map(field => (
+            <div key={field.key} className="mb-3">
+              <label className="field-label">{field.label}{field.required && ' *'}</label>
+              <input type={field.type} className="field-input" value={form[field.key] || ''}
+                maxLength={field.maxLength}
+                onChange={e=>set(field.key, e.target.value, field.transform)}/>
+            </div>
+          ))}
+          {error && <div className="alert-error"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{error}</div>}
+          <div className="flex gap-2 mt-4">
+            <button type="button" onClick={onClose} className="flex-1 btn-action btn-secondary">Cancelar</button>
+            <button type="submit" disabled={saving} className="flex-1 btn-action btn-primary">
+              {saving ? 'Salvando…' : 'Gravar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CadastroList() {
+  const tipo = new URLSearchParams(window.location.search).get('tipo') || 'tipos';
+  const config = CONFIGS[tipo];
+
+  const [items, setItems]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch]   = useState('');
+  const [modalItem, setModalItem] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null); // estado para exclusão
+
+  useEffect(() => { document.getElementById('page-title').textContent = `ImobiliWin — ${config.title}`; }, [config]);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}${config.apiPath}?search=${search}`, { headers: authHeaders() });
+      if (res.status === 401) { window.location.href = './login.html'; return; }
+      const data = await res.json();
+      setItems(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, [search, config]);
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    try {
+      await fetch(`${API}${config.apiPath}/${deleteTarget.id}`, { method: 'DELETE', headers: authHeaders() });
+      setDeleteTarget(null);
+      load();
+    } catch (err) {
+      console.error(err);
+      // Opcional: exibir erro
+    }
+  }
+
+  function handleNew() {
+    setModalItem(null);
+    setShowModal(true);
+  }
+
+  function handleEdit(item) {
+    setModalItem(item);
+    setShowModal(true);
+  }
+
+  function handleSave() {
+    setShowModal(false);
+    load();
+  }
+
+  // Função para obter uma descrição amigável do item (para o modal de exclusão)
+  function getItemDescription(item) {
+    if (item.sigla) return item.sigla;
+    if (item.nome) return item.nome;
+    if (item.nome_curto) return item.nome_curto;
+    return `ID ${item.id}`;
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-100">
+      <Navbar/>
+      <div className="max-w-screen-xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800" style={{fontFamily:'Syne,sans-serif'}}>{config.title}</h1>
+            <p className="text-sm text-slate-500 mt-1">{items.length} registro{items.length !== 1 ? 's' : ''}</p>
+          </div>
+          <button onClick={handleNew}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all"
+            style={{background:'linear-gradient(135deg,#1a6bea,#3388f5)', boxShadow:'0 2px 10px rgba(51,136,245,.3)'}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Criar Novo
+          </button>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 mb-4 flex items-center gap-3 shadow-sm">
+          <label className="text-xs text-slate-500 font-medium">Pesquisar</label>
+          <input value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Digite para filtrar..."
+            className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"/>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          {loading ? (
+            <div className="py-16 text-center">
+              <div className="spinner"></div>
+              <p className="text-sm text-slate-400 mt-3">Carregando…</p>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="py-16 text-center">
+              <p className="text-slate-400 text-sm">Nenhum registro encontrado.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table>
+                <thead>
+                  <tr>
+                    {config.columns.map(col => (
+                      <th key={col.key}>{col.label}</th>
+                    ))}
+                    <th className="text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map(item => (
+                    <tr key={item.id}>
+                      {config.columns.map(col => (
+                        <td key={col.key} className="text-xs text-slate-700">{item[col.key] || '—'}</td>
+                      ))}
+                      <td className="text-right">
+                        <div className="flex gap-1 justify-end">
+                          <button className="btn-sm btn-edit" onClick={() => handleEdit(item)}>Editar</button>
+                          <button className="btn-sm btn-delete" onClick={() => setDeleteTarget(item)}>Excluir</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6">
+          <button onClick={() => window.history.back()}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Voltar
+          </button>
+        </div>
+      </div>
+
+      {/* Modal de exclusão */}
+      {deleteTarget && (
+        <div className="modal-overlay" onClick={() => setDeleteTarget(null)}>
+          <div className="modal-box fade-in" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-5">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  <path d="M10 11v6"/><path d="M14 11v6"/>
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-slate-800 mb-1">Confirmar exclusão</h3>
+              <p className="text-sm text-slate-500">Excluir o registro <span className="font-medium">{getItemDescription(deleteTarget)}</span>?</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteTarget(null)} 
+                className="flex-1 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={confirmDelete}
+                className="flex-1 py-2 rounded-lg bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors">
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de cadastro/edição */}
+      {showModal && (
+        <FormModal
+          config={config}
+          item={modalItem}
+          onClose={() => setShowModal(false)}
+          onSave={handleSave}
+        />
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<CadastroList/>);
+</script>
+</body>
+</html>

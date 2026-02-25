@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MORADA DO SOL — Nova Pessoa</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { font-family:'DM Sans',sans-serif; box-sizing:border-box; }
+    body { background:#f1f5f9; margin:0; }
+    .navbar { background:#0d1829; color:#fff; }
+    .field-label { font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.06em; display:block; margin-bottom:4px; }
+    .field-input { width:100%; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; font-size:13px; color:#1e293b; background:#fff; outline:none; transition:all .2s; }
+    .field-input:focus { border-color:#3388f5; box-shadow:0 0 0 3px rgba(51,136,245,.12); }
+    .field-input:disabled { background:#f8fafc; color:#94a3b8; cursor:not-allowed; }
+    .field-select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:28px; }
+    .card { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:16px; box-shadow:0 1px 4px rgba(0,0,0,.04); }
+    .btn-action { display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s; }
+    .btn-primary { background:linear-gradient(135deg,#1a6bea,#3388f5);color:#fff;box-shadow:0 2px 10px rgba(51,136,245,.3); }
+    .btn-primary:hover:not(:disabled) { transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:.6;cursor:not-allowed; }
+    .btn-secondary { background:#fff;color:#475569;border:1px solid #e2e8f0; }
+    .btn-secondary:hover { background:#f8fafc; }
+    .alert-error { background:#fef2f2;border:1px solid#fecaca;color:#dc2626;border-radius:10px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:8px; }
+    .alert-success { background:#f0fdf4;border:1px solid#bbf7d0;color:#15803d;border-radius:10px;padding:12px 16px;font-size:13px;display:flex;align-items:center;gap:8px; }
+    .spinner { width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite; }
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+const API = 'http://reserva.imbmoradadosol.online/api';
+function getToken() { return localStorage.getItem('iw_token'); }
+function authHeaders(){ return {'Content-Type':'application/json', Authorization:`Bearer ${getToken()}`}; }
+
+function Navbar() {
+  const [cadastrosOpen, setCadastrosOpen] = useState(false);
+  const [diversosOpen, setDiversosOpen]   = useState(false);
+  const cadastrosRef = useRef(null);
+  const diversosRef  = useRef(null);
+  const user = JSON.parse(localStorage.getItem('iw_user') || '{}');
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (cadastrosRef.current && !cadastrosRef.current.contains(e.target)) setCadastrosOpen(false);
+      if (diversosRef.current  && !diversosRef.current.contains(e.target))  setDiversosOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const menuItems = [
+    { label: 'Reservas',   href: './reservas.html' },
+    { label: 'Imóveis',    href: './imoveis.html' },
+    { label: 'Pessoas',    href: './pessoas.html' },
+  ];
+
+  const cadastrosItems = [
+    { label: 'Imóveis Tipos', href: './cadastros.html?tipo=tipos' },
+    { label: 'Municípios/UF', href: './cadastros.html?tipo=municipios' },
+    { label: 'Bancos',        href: './cadastros.html?tipo=bancos' },
+  ];
+
+  const diversosItems = [
+    { label: 'Limpeza',   href: './limpeza-list.html' },
+  ];
+
+  return (
+    <nav className="navbar px-6 py-3 flex items-center justify-between shadow-lg">
+      <div className="flex items-center gap-6">
+        <a href="./login.html" className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:'linear-gradient(135deg,#1a6bea,#3388f5)'}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <span style={{fontFamily:'Syne,sans-serif',fontWeight:800}} className="text-sm text-white">
+            Morada do Sol
+          </span>
+        </a>
+        <div className="hidden md:flex items-center gap-1">
+          {menuItems.map(item => (
+            <a key={item.label} href={item.href}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${item.label==='Pessoas'?'text-blue-400':'text-slate-400 hover:text-white hover:bg-white/10'}`}>
+              {item.label}
+            </a>
+          ))}
+          <div className="relative" ref={cadastrosRef}>
+            <button onClick={() => setCadastrosOpen(v => !v)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1">
+              Cadastros
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                style={{transform: cadastrosOpen ? 'rotate(180deg)' : 'rotate(0)', transition:'transform .2s'}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {cadastrosOpen && (
+              <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[160px] z-50"
+                style={{animation:'fadeIn .15s ease'}}>
+                {cadastrosItems.map(item => (
+                  <a key={item.label} href={item.href}
+                    className="block px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors font-medium">
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="relative" ref={diversosRef}>
+            <button onClick={() => setDiversosOpen(v => !v)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1">
+              Diversos
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                style={{transform: diversosOpen ? 'rotate(180deg)' : 'rotate(0)', transition:'transform .2s'}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {diversosOpen && (
+              <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[160px] z-50"
+                style={{animation:'fadeIn .15s ease'}}>
+                {diversosItems.map(item => (
+                  <a key={item.label} href={item.href}
+                    className="block px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors font-medium">
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-slate-400">{user.email}</span>
+        <button onClick={() => { localStorage.clear(); window.location.href='./login.html'; }}
+          className="text-xs px-3 py-1.5 rounded-lg bg-white/10 text-slate-300 hover:bg-white/20 transition-colors">Sair</button>
+      </div>
+    </nav>
+  );
+}
+
+function PessoaForm() {
+  const urlId = new URLSearchParams(window.location.search).get('id');
+  const isEdit = !!urlId;
+
+  const [bancos, setBancos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [cepLoading, setCepLoading] = useState(false);
+
+  const [cepFilled, setCepFilled] = useState({
+    endereco: false,
+    bairro: false,
+    municipio: false,
+    estado: false,
+  });
+
+  const [form, setForm] = useState({
+    tipo:'locatario', nome:'', estado_civil:'',
+    cpf_cnpj:'', rg_ie:'', dni:'',
+    cep:'', endereco:'', numero:'', complemento:'', bairro:'', municipio:'', estado:'',
+    profissao:'', tel_comercial:'', tel_residencial:'', tel_celular:'',
+    email:'', inscricao:'', contato:'', tel_contato:'',
+    proprietario:'NAO', locatario:'NAO', corretor:'NAO', prestador:'NAO', fiador:'NAO',
+    banco:'', agencia:'', conta:'', nome_conta:'', chave_pix:'',
+    status:'ATIVO', aniversario:'', restricao:'NAO',
+    obs_restricoes:'', obs:'',
+  });
+
+  const loadBancos = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/bancos`, {headers:authHeaders()});
+      const data = await res.json();
+      setBancos(Array.isArray(data) ? data : []);
+    } catch {}
+  }, []);
+
+  const loadPessoa = useCallback(async () => {
+    if (!urlId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/pessoas/${urlId}`, {headers:authHeaders()});
+      if (!res.ok) throw new Error();
+      const d = await res.json();
+      setForm({
+        tipo: d.tipo || 'locatario',
+        nome: d.nome || '',
+        estado_civil: d.estado_civil || '',
+        cpf_cnpj: d.cpf_cnpj || '',
+        rg_ie: d.rg_ie || '',
+        dni: d.dni || '',
+        cep: '', // ainda não temos campo cep no backend
+        endereco: d.endereco || '',
+        numero: d.numero || '',
+        complemento: d.complemento || '',
+        bairro: d.bairro || '',
+        municipio: d.cidade || '',
+        estado: d.estado || '',
+        profissao: d.profissao || '',
+        tel_comercial: d.telefone || '',
+        tel_residencial: d.tel_residencial || '',
+        tel_celular: d.celular || '',
+        email: d.email || '',
+        inscricao: d.inscricao || '',
+        contato: d.contato || '',
+        tel_contato: d.tel_contato || '',
+        proprietario: d.proprietario ? 'SIM' : 'NAO',
+        locatario: d.locatario ? 'SIM' : 'NAO',
+        corretor: d.corretor ? 'SIM' : 'NAO',
+        prestador: d.prestador ? 'SIM' : 'NAO',
+        fiador: d.fiador ? 'SIM' : 'NAO',
+        banco: d.banco_id ? d.banco_id.toString() : '',
+        agencia: d.agencia || '',
+        conta: d.conta || '',
+        nome_conta: d.nome_conta || '',
+        chave_pix: d.chave_pix || '',
+        status: d.ativo ? 'ATIVO' : 'INATIVO',
+        aniversario: d.aniversario ? d.aniversario.split('T')[0] : '',
+        restricao: d.restricao ? 'SIM' : 'NAO',
+        obs_restricoes: d.obs_restricoes || '',
+        obs: d.obs || '',
+      });
+    } catch {
+      setError('Erro ao carregar pessoa.');
+    } finally {
+      setLoading(false);
+    }
+  }, [urlId]);
+
+  useEffect(() => {
+    loadBancos();
+    loadPessoa();
+  }, [loadBancos, loadPessoa]);
+
+  function set(field, value) {
+    setForm(prev => ({ ...prev, [field]: value }));
+  }
+
+  async function handleCepBlur() {
+    const cep = form.cep.replace(/\D/g, '');
+    if (cep.length !== 8) return;
+    setCepLoading(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await res.json();
+      if (data.erro) throw new Error();
+      
+      const ufMap = {
+        'AC':'ACRE','AL':'ALAGOAS','AP':'AMAPÁ','AM':'AMAZONAS','BA':'BAHIA','CE':'CEARÁ',
+        'DF':'DISTRITO FEDERAL','ES':'ESPÍRITO SANTO','GO':'GOIÁS','MA':'MARANHÃO',
+        'MT':'MATO GROSSO','MS':'MATO GROSSO DO SUL','MG':'MINAS GERAIS','PA':'PARÁ',
+        'PB':'PARAÍBA','PR':'PARANÁ','PE':'PERNAMBUCO','PI':'PIAUÍ','RJ':'RIO DE JANEIRO',
+        'RN':'RIO GRANDE DO NORTE','RS':'RIO GRANDE DO SUL','RO':'RONDÔNIA','RR':'RORAIMA',
+        'SC':'SANTA CATARINA','SP':'SÃO PAULO','SE':'SERGIPE','TO':'TOCANTINS'
+      };
+      
+      const updates = {};
+      const filled = {};
+      
+      if (data.logradouro) { updates.endereco = data.logradouro; filled.endereco = true; }
+      if (data.bairro)     { updates.bairro = data.bairro; filled.bairro = true; }
+      if (data.localidade) { updates.municipio = data.localidade; filled.municipio = true; }
+      if (data.uf)         { updates.estado = ufMap[data.uf.toUpperCase()]; filled.estado = true; }
+      
+      setForm(prev => ({ ...prev, ...updates }));
+      setCepFilled(filled);
+    } catch {
+      alert('CEP não encontrado.');
+    } finally {
+      setCepLoading(false);
+    }
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.nome || !form.tipo) {
+      setError('Preencha nome e tipo.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    const body = {
+      nome: form.nome,
+      cpf_cnpj: form.cpf_cnpj || null,
+      email: form.email || null,
+      telefone: form.tel_comercial || null,
+      celular: form.tel_celular || null,
+      endereco: form.endereco || null,
+      numero: form.numero || null,
+      complemento: form.complemento || null,
+      bairro: form.bairro || null,
+      cidade: form.municipio || null,
+      estado: form.estado || null,
+      tipo: form.tipo,
+      ativo: form.status === 'ATIVO',
+      obs: form.obs || null,
+      estado_civil: form.estado_civil || null,
+      rg_ie: form.rg_ie || null,
+      dni: form.dni || null,
+      profissao: form.profissao || null,
+      tel_residencial: form.tel_residencial || null,
+      inscricao: form.inscricao || null,
+      contato: form.contato || null,
+      tel_contato: form.tel_contato || null,
+      proprietario: form.proprietario === 'SIM',
+      locatario: form.locatario === 'SIM',
+      corretor: form.corretor === 'SIM',
+      prestador: form.prestador === 'SIM',
+      fiador: form.fiador === 'SIM',
+      banco_id: form.banco ? parseInt(form.banco, 10) : null,
+      agencia: form.agencia || null,
+      conta: form.conta || null,
+      nome_conta: form.nome_conta || null,
+      chave_pix: form.chave_pix || null,
+      aniversario: form.aniversario || null,
+      restricao: form.restricao === 'SIM',
+      obs_restricoes: form.obs_restricoes || null,
+    };
+
+    try {
+      const url = isEdit ? `${API}/pessoas/${urlId}` : `${API}/pessoas`;
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Erro ao salvar.');
+      setSuccess(isEdit ? 'Pessoa atualizada!' : 'Pessoa criada com sucesso!');
+      setTimeout(() => window.location.href = './pessoas.html', 1500);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div style={{width:32,height:32,border:'3px solid #e2e8f0',borderTopColor:'#3388f5',borderRadius:'50%',animation:'spin .7s linear infinite'}}/>
+      </div>
+    );
+  }
+
+  const estados = ['ACRE','ALAGOAS','AMAPÁ','AMAZONAS','BAHIA','CEARÁ','DISTRITO FEDERAL','ESPÍRITO SANTO','GOIÁS','MARANHÃO','MATO GROSSO','MATO GROSSO DO SUL','MINAS GERAIS','PARÁ','PARAÍBA','PARANÁ','PERNAMBUCO','PIAUÍ','RIO DE JANEIRO','RIO GRANDE DO NORTE','RIO GRANDE DO SUL','RONDÔNIA','RORAIMA','SANTA CATARINA','SÃO PAULO','SERGIPE','TOCANTINS'];
+
+  return (
+    <div className="min-h-screen bg-slate-100">
+      <Navbar/>
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className="mb-5">
+          <h1 className="text-2xl font-bold text-slate-800" style={{fontFamily:'Syne,sans-serif'}}>
+            {isEdit ? 'Editar' : 'Nova'} Pessoa
+          </h1>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          {/* Linha 1 */}
+          <div className="card">
+            <div className="grid grid-cols-3 gap-4">
+              <div><label className="field-label">Tipo Pessoa *</label>
+                <select className="field-input field-select" value={form.tipo} onChange={e=>set('tipo',e.target.value)}>
+                  <option value="locatario">Locatário</option>
+                  <option value="corretor">Corretor</option>
+                  <option value="fiador">Fiador</option>
+                  <option value="prestador">Prestador Serviço</option>
+                </select>
+              </div>
+              <div><label className="field-label">Nome *</label>
+                <input type="text" className="field-input" value={form.nome} onChange={e=>set('nome',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Estado Civil</label>
+                <select className="field-input field-select" value={form.estado_civil} onChange={e=>set('estado_civil',e.target.value)}>
+                  <option value="">Não Aplicável</option>
+                  <option value="SOLTEIRO">Solteiro(a)</option>
+                  <option value="CASADO">Casado(a)</option>
+                  <option value="DIVORCIADO">Divorciado(a)</option>
+                  <option value="VIUVO">Viúvo(a)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Documentos */}
+          <div className="card">
+            <div className="grid grid-cols-3 gap-4">
+              <div><label className="field-label">CPF(CNJ)</label>
+                <input type="text" className="field-input" placeholder="Pessoa física CPF, pessoa jurídica CNPJ"
+                  value={form.cpf_cnpj} onChange={e=>set('cpf_cnpj',e.target.value)}/>
+              </div>
+              <div><label className="field-label">RG/Ins Estadual</label>
+                <input type="text" className="field-input" placeholder="Pessoa Física RG, pessoa jurídica IE-Inscrição Estadual"
+                  value={form.rg_ie} onChange={e=>set('rg_ie',e.target.value)}/>
+              </div>
+              <div><label className="field-label">DNI</label>
+                <input type="text" className="field-input" placeholder="DNI, N° Passport, etc."
+                  value={form.dni} onChange={e=>set('dni',e.target.value)}/>
+              </div>
+            </div>
+          </div>
+
+          {/* Endereço */}
+          <div className="card">
+            <div className="grid grid-cols-12 gap-4 mb-4">
+              <div className="col-span-3"><label className="field-label">CEP</label>
+                <div className="flex gap-2">
+                  <input type="text" className="field-input" value={form.cep} onChange={e=>set('cep',e.target.value)}
+                    onBlur={handleCepBlur} placeholder="00000-000"/>
+                  {cepLoading && <div className="spinner" style={{width:20,height:20,marginTop:6}}/>}
+                </div>
+              </div>
+              <div className="col-span-7"><label className="field-label">Endereço</label>
+                <input type="text" className="field-input" disabled={cepFilled.endereco} value={form.endereco} onChange={e=>set('endereco',e.target.value)}/>
+              </div>
+              <div className="col-span-2"><label className="field-label">Número</label>
+                <input type="text" className="field-input" value={form.numero} onChange={e=>set('numero',e.target.value)}/>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-4">
+              <div><label className="field-label">Complemento</label>
+                <input type="text" className="field-input" value={form.complemento} onChange={e=>set('complemento',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Bairro</label>
+                <input type="text" className="field-input" disabled={cepFilled.bairro} value={form.bairro} onChange={e=>set('bairro',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Município</label>
+                <input type="text" className="field-input" disabled={cepFilled.municipio} value={form.municipio} onChange={e=>set('municipio',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Estado</label>
+                <select className="field-input field-select" disabled={cepFilled.estado} value={form.estado} onChange={e=>set('estado',e.target.value)}>
+                  <option value="">Selecione</option>
+                  {estados.map(e => <option key={e} value={e}>{e}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Contato */}
+          <div className="card">
+            <div className="grid grid-cols-4 gap-4 mb-4">
+              <div><label className="field-label">Profissão</label>
+                <input type="text" className="field-input" value={form.profissao} onChange={e=>set('profissao',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Tel. Comercial</label>
+                <input type="text" className="field-input" value={form.tel_comercial} onChange={e=>set('tel_comercial',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Tel. Residencial</label>
+                <input type="text" className="field-input" value={form.tel_residencial} onChange={e=>set('tel_residencial',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Tel. Celular</label>
+                <input type="text" className="field-input" value={form.tel_celular} onChange={e=>set('tel_celular',e.target.value)}/>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-4">
+              <div><label className="field-label">Email</label>
+                <input type="email" className="field-input" value={form.email} onChange={e=>set('email',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Inscrição</label>
+                <input type="text" className="field-input" value={form.inscricao} onChange={e=>set('inscricao',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Contato</label>
+                <input type="text" className="field-input" value={form.contato} onChange={e=>set('contato',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Tel. Contato</label>
+                <input type="text" className="field-input" value={form.tel_contato} onChange={e=>set('tel_contato',e.target.value)}/>
+              </div>
+            </div>
+          </div>
+
+          {/* Tipos */}
+          <div className="card">
+            <div className="grid grid-cols-5 gap-4">
+              <div><label className="field-label">Proprietário</label>
+                <select className="field-input field-select" value={form.proprietario} onChange={e=>set('proprietario',e.target.value)}>
+                  <option value="NAO">NÃO</option><option value="SIM">SIM</option>
+                </select>
+              </div>
+              <div><label className="field-label">Locatário</label>
+                <select className="field-input field-select" value={form.locatario} onChange={e=>set('locatario',e.target.value)}>
+                  <option value="NAO">NÃO</option><option value="SIM">SIM</option>
+                </select>
+              </div>
+              <div><label className="field-label">Corretor</label>
+                <select className="field-input field-select" value={form.corretor} onChange={e=>set('corretor',e.target.value)}>
+                  <option value="NAO">NÃO</option><option value="SIM">SIM</option>
+                </select>
+              </div>
+              <div><label className="field-label">Prestador Serviço</label>
+                <select className="field-input field-select" value={form.prestador} onChange={e=>set('prestador',e.target.value)}>
+                  <option value="NAO">NÃO</option><option value="SIM">SIM</option>
+                </select>
+              </div>
+              <div><label className="field-label">Fiador</label>
+                <select className="field-input field-select" value={form.fiador} onChange={e=>set('fiador',e.target.value)}>
+                  <option value="NAO">NÃO</option><option value="SIM">SIM</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Bancário */}
+          <div className="card">
+            <div className="grid grid-cols-5 gap-4">
+              <div><label className="field-label">Banco</label>
+                <select className="field-input field-select" value={form.banco} onChange={e=>set('banco',e.target.value)}>
+                  <option value="">Selecione</option>
+                  {bancos.map(b => <option key={b.id} value={b.id}>{b.numero} {b.nome_curto}</option>)}
+                </select>
+              </div>
+              <div><label className="field-label">Agência</label>
+                <input type="text" className="field-input" value={form.agencia} onChange={e=>set('agencia',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Conta</label>
+                <input type="text" className="field-input" value={form.conta} onChange={e=>set('conta',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Nome da Conta</label>
+                <input type="text" className="field-input" value={form.nome_conta} onChange={e=>set('nome_conta',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Chave Pix</label>
+                <input type="text" className="field-input" value={form.chave_pix} onChange={e=>set('chave_pix',e.target.value)}/>
+              </div>
+            </div>
+          </div>
+
+          {/* Status/Restrições */}
+          <div className="card">
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div><label className="field-label">Status</label>
+                <select className="field-input field-select" value={form.status} onChange={e=>set('status',e.target.value)}>
+                  <option value="ATIVO">ATIVO</option>
+                  <option value="INATIVO">INATIVO</option>
+                </select>
+              </div>
+              <div><label className="field-label">Aniversário</label>
+                <input type="date" className="field-input" value={form.aniversario} onChange={e=>set('aniversario',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Restrição</label>
+                <select className="field-input field-select" value={form.restricao} onChange={e=>set('restricao',e.target.value)}>
+                  <option value="NAO">NÃO</option>
+                  <option value="SIM">SIM</option>
+                </select>
+              </div>
+            </div>
+            <div><label className="field-label">Observação Restrições</label>
+              <textarea className="field-input" rows={2} placeholder="Digite as observações para as Restrições."
+                value={form.obs_restricoes} onChange={e=>set('obs_restricoes',e.target.value)}/>
+            </div>
+          </div>
+
+          {/* Observações */}
+          <div className="card">
+            <label className="field-label">Observações</label>
+            <textarea className="field-input" rows={3} value={form.obs} onChange={e=>set('obs',e.target.value)}/>
+          </div>
+
+          {error   && <div className="alert-error mb-4"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{error}</div>}
+          {success && <div className="alert-success mb-4"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>{success}</div>}
+
+          <div className="flex items-center justify-between pb-8">
+            <a href="./pessoas.html" className="btn-action btn-secondary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              Voltar
+            </a>
+            <button type="submit" disabled={saving} className="btn-action btn-primary">
+              {saving ? <><div className="spinner"/>&nbsp;Salvando…</> : <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Gravar
+              </>}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<PessoaForm/>);
+</script>
+</body>
+</html>

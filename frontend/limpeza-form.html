@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MORADA DO SOL — Novo Registro Limpeza</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { font-family:'DM Sans',sans-serif; box-sizing:border-box; }
+    body { background:#f1f5f9; margin:0; }
+    .navbar { background:#0d1829; color:#fff; }
+    .field-label { font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.06em; display:block; margin-bottom:4px; }
+    .field-input { width:100%; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; font-size:13px; color:#1e293b; background:#fff; outline:none; transition:all .2s; }
+    .field-input:focus { border-color:#3388f5; box-shadow:0 0 0 3px rgba(51,136,245,.12); }
+    .field-select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:28px; }
+    .btn-action { display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s; }
+    .btn-primary { background:linear-gradient(135deg,#1a6bea,#3388f5);color:#fff;box-shadow:0 2px 10px rgba(51,136,245,.3); }
+    .btn-primary:hover:not(:disabled) { transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:.6;cursor:not-allowed; }
+    .btn-secondary { background:#fff;color:#475569;border:1px solid #e2e8f0; }
+    .btn-secondary:hover { background:#f8fafc; }
+    .card { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:22px; box-shadow:0 1px 4px rgba(0,0,0,.04); }
+    .alert-error { background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:10px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:8px; }
+    .alert-success { background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:10px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:8px; }
+    .spinner { width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite; }
+    @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+const API = 'http://reserva.imbmoradadosol.online/api';
+function getToken() { return localStorage.getItem('iw_token'); }
+function authHeaders(){ return {'Content-Type':'application/json', Authorization:`Bearer ${getToken()}`}; }
+
+function Navbar() {
+  const [cadastrosOpen, setCadastrosOpen] = useState(false);
+  const [diversosOpen, setDiversosOpen]   = useState(false);
+  const cadastrosRef = useRef(null);
+  const diversosRef  = useRef(null);
+  const user = JSON.parse(localStorage.getItem('iw_user') || '{}');
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (cadastrosRef.current && !cadastrosRef.current.contains(e.target)) setCadastrosOpen(false);
+      if (diversosRef.current  && !diversosRef.current.contains(e.target))  setDiversosOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const menuItems = [
+    { label: 'Reservas',   href: './reservas.html' },
+    { label: 'Imóveis',    href: './imoveis.html' },
+    { label: 'Pessoas',    href: './pessoas.html' },
+  ];
+
+  const cadastrosItems = [
+    { label: 'Imóveis Tipos', href: './cadastros.html?tipo=tipos' },
+    { label: 'Municípios/UF', href: './cadastros.html?tipo=municipios' },
+    { label: 'Bancos',        href: './cadastros.html?tipo=bancos' },
+  ];
+
+  const diversosItems = [
+    { label: 'Limpeza',   href: './limpeza-list.html' },
+  ];
+
+  return (
+    <nav className="navbar px-6 py-3 flex items-center justify-between shadow-lg">
+      <div className="flex items-center gap-6">
+        <a href="./login.html" className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:'linear-gradient(135deg,#1a6bea,#3388f5)'}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <span style={{fontFamily:'Syne,sans-serif',fontWeight:800}} className="text-sm text-white">
+            Morada do Sol
+          </span>
+        </a>
+        <div className="hidden md:flex items-center gap-1">
+          {menuItems.map(item => (
+            <a key={item.label} href={item.href}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${item.label==='Diversos'?'text-blue-400':'text-slate-400 hover:text-white hover:bg-white/10'}`}>
+              {item.label}
+            </a>
+          ))}
+          <div className="relative" ref={cadastrosRef}>
+            <button onClick={() => setCadastrosOpen(v => !v)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1">
+              Cadastros
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                style={{transform: cadastrosOpen ? 'rotate(180deg)' : 'rotate(0)', transition:'transform .2s'}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {cadastrosOpen && (
+              <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[160px] z-50"
+                style={{animation:'fadeIn .15s ease'}}>
+                {cadastrosItems.map(item => (
+                  <a key={item.label} href={item.href}
+                    className="block px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors font-medium">
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="relative" ref={diversosRef}>
+            <button onClick={() => setDiversosOpen(v => !v)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1">
+              Diversos
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                style={{transform: diversosOpen ? 'rotate(180deg)' : 'rotate(0)', transition:'transform .2s'}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {diversosOpen && (
+              <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[160px] z-50"
+                style={{animation:'fadeIn .15s ease'}}>
+                {diversosItems.map(item => (
+                  <a key={item.label} href={item.href}
+                    className="block px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors font-medium">
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-slate-400">{user.email}</span>
+        <button onClick={() => { localStorage.clear(); window.location.href='./login.html'; }}
+          className="text-xs px-3 py-1.5 rounded-lg bg-white/10 text-slate-300 hover:bg-white/20 transition-colors">Sair</button>
+      </div>
+    </nav>
+  );
+}
+function LimpezaForm() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const editId    = urlParams.get('id');
+  const reservaId = urlParams.get('reserva_id');
+  const imovelIdParam = urlParams.get('imovel_id');
+  const isEdit = !!editId;
+
+  const [imoveis, setImoveis]     = useState([]);
+  const [prestadores, setPrestadores] = useState([]);
+  const [loading, setLoading]     = useState(false);
+  const [saving, setSaving]       = useState(false);
+  const [error, setError]         = useState('');
+  const [success, setSuccess]     = useState('');
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const [form, setForm] = useState({
+    reserva_id: reservaId || '',
+    imovel_id:  imovelIdParam || '',
+    prestador_id: '',
+    data: today,
+    valor: '0,00',
+    status: 'Aberto',
+    obs: '',
+  });
+
+  const [locacao, setLocacao] = useState('');
+
+  const loadSelects = useCallback(async () => {
+    try {
+      const [im, pr] = await Promise.all([
+        fetch(`${API}/imoveis`, {headers:authHeaders()}).then(r=>r.json()),
+        fetch(`${API}/pessoas?tipo=corretor`, {headers:authHeaders()}).then(r=>r.json()),
+      ]);
+      setImoveis(Array.isArray(im) ? im : []);
+      setPrestadores(Array.isArray(pr) ? pr : []);
+    } catch {}
+  }, []);
+
+  const loadRegistro = useCallback(async () => {
+    if (!editId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/limpeza/${editId}`, {headers:authHeaders()});
+      if (!res.ok) throw new Error();
+      const d = await res.json();
+      setForm({
+        reserva_id:   d.reserva_id || '',
+        imovel_id:    d.imovel_id,
+        prestador_id: d.prestador_id || '',
+        data:         d.data?.split('T')[0] || today,
+        valor:        Number(d.valor||0).toFixed(2).replace('.',','),
+        status:       d.status,
+        obs:          d.obs || '',
+      });
+      if (d.imovel_codigo && d.imovel_endereco) {
+        setLocacao(`${d.imovel_codigo} - ${d.imovel_endereco}`);
+      }
+    } catch {
+      setError('Erro ao carregar registro.');
+    } finally {
+      setLoading(false);
+    }
+  }, [editId, today]);
+
+  useEffect(() => {
+    loadSelects();
+    loadRegistro();
+  }, [loadSelects, loadRegistro]);
+
+  // Autopreenchimento ao selecionar imóvel
+  useEffect(() => {
+    if (form.imovel_id && imoveis.length > 0) {
+      const im = imoveis.find(i => String(i.id) === String(form.imovel_id));
+      if (im) {
+        setLocacao(`${im.codigo} - ${im.tipo} - ${im.endereco}`);
+      }
+    }
+  }, [form.imovel_id, imoveis]);
+
+  function set(field, value) {
+    setForm(prev => ({ ...prev, [field]: value }));
+  }
+
+  const toNum = s => parseFloat(String(s||'0').replace(',','.')) || 0;
+  const toFmt = n => Number(n).toFixed(2).replace('.',',');
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.imovel_id || !form.data) {
+      setError('Preencha imóvel e data.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    const body = {
+      reserva_id:   form.reserva_id ? Number(form.reserva_id) : null,
+      imovel_id:    Number(form.imovel_id),
+      prestador_id: form.prestador_id ? Number(form.prestador_id) : null,
+      data:         form.data,
+      valor:        toNum(form.valor),
+      status:       form.status,
+      obs:          form.obs,
+    };
+
+    try {
+      const url    = isEdit ? `${API}/limpeza/${editId}` : `${API}/limpeza`;
+      const method = isEdit ? 'PUT' : 'POST';
+      const res    = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) });
+      const data   = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Erro ao salvar.');
+      setSuccess(isEdit ? 'Registro atualizado!' : 'Registro criado com sucesso!');
+      setTimeout(() => window.history.back(), 1500);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div style={{width:32,height:32,border:'3px solid #e2e8f0',borderTopColor:'#3388f5',borderRadius:'50%',animation:'spin .7s linear infinite'}}/>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-100">
+      <Navbar/>
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <div className="mb-5">
+          <h1 className="text-2xl font-bold text-slate-800" style={{fontFamily:'Syne,sans-serif'}}>
+            {isEdit ? 'Editar' : 'Novo'} Registro Limpeza Imóvel
+          </h1>
+        </div>
+
+        <div className="card">
+          <form onSubmit={handleSubmit}>
+
+            {/* Locação (readonly se tiver imóvel) */}
+            <div className="mb-4">
+              <label className="field-label">Locação</label>
+              {locacao ? (
+                <input type="text" className="field-input" value={locacao} disabled/>
+              ) : (
+                <select className="field-input field-select" value={form.imovel_id} onChange={e=>set('imovel_id',e.target.value)}>
+                  <option value="">Selecione um imóvel</option>
+                  {imoveis.map(im => (
+                    <option key={im.id} value={im.id}>
+                      {im.codigo} - {im.tipo} - {im.endereco}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Prestador Serviço */}
+            <div className="mb-4">
+              <label className="field-label">Prestador Serviço</label>
+              <select className="field-input field-select" value={form.prestador_id} onChange={e=>set('prestador_id',e.target.value)}>
+                <option value="">Selecione um prestador</option>
+                {prestadores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              </select>
+            </div>
+
+            {/* Data */}
+            <div className="mb-4">
+              <label className="field-label">Data</label>
+              <input type="date" className="field-input" value={form.data} onChange={e=>set('data',e.target.value)}/>
+            </div>
+
+            {/* Valor */}
+            <div className="mb-4">
+              <label className="field-label">Valor</label>
+              <input type="text" className="field-input" value={form.valor}
+                onChange={e=>set('valor',e.target.value)}
+                onBlur={e=>set('valor',toFmt(toNum(e.target.value)))}/>
+            </div>
+
+            {/* Status */}
+            <div className="mb-4">
+              <label className="field-label">Status</label>
+              <select className="field-input field-select" value={form.status} onChange={e=>set('status',e.target.value)}>
+                <option value="Aberto">Aberto</option>
+                <option value="Concluído">Concluído</option>
+                <option value="Cancelado">Cancelado</option>
+              </select>
+            </div>
+
+            {/* Obs */}
+            <div className="mb-5">
+              <label className="field-label">Observações</label>
+              <textarea className="field-input" rows={3} value={form.obs} onChange={e=>set('obs',e.target.value)}/>
+            </div>
+
+            {/* Alertas */}
+            {error   && <div className="alert-error   mb-4"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{error}</div>}
+            {success && <div className="alert-success mb-4"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>{success}</div>}
+
+            {/* Botões */}
+            <div className="flex items-center justify-between">
+              <button type="button" onClick={() => window.history.back()} className="btn-action btn-secondary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                Voltar
+              </button>
+              <button type="submit" disabled={saving} className="btn-action btn-primary">
+                {saving ? <><div className="spinner"/>&nbsp;Salvando…</> : <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  Gravar
+                </>}
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<LimpezaForm/>);
+</script>
+</body>
+</html>

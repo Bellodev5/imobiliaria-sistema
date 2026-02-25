@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MORADA DO SOL — Reserva/Locação</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme:{extend:{fontFamily:{display:['Syne','sans-serif'],body:['DM Sans','sans-serif']},colors:{primary:{500:'#3388f5',600:'#1a6bea',700:'#1355d7'}}}}
+    }
+  </script>
+  <style>
+    * { font-family:'DM Sans',sans-serif; box-sizing:border-box; }
+    body { background:#f1f5f9; margin:0; }
+    .navbar { background:#0d1829; color:#fff; }
+    .field-label { font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.06em; display:block; margin-bottom:4px; }
+    .field-input  { width:100%; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; font-size:13px; color:#1e293b; background:#fff; outline:none; transition:all .2s; }
+    .field-input:focus { border-color:#3388f5; box-shadow:0 0 0 3px rgba(51,136,245,.12); }
+    .field-input:disabled { background:#f8fafc; color:#94a3b8; }
+    .field-select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:28px; }
+    .section-title { font-size:13px; font-weight:700; color:#0f172a; border-bottom:2px solid #e2e8f0; padding-bottom:8px; margin-bottom:14px; letter-spacing:.01em; }
+    .card { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:16px; box-shadow:0 1px 4px rgba(0,0,0,.04); }
+    .value-display { background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:8px 12px; font-size:13px; font-weight:600; color:#0c4a6e; }
+    .btn-action { display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s; }
+    .btn-primary { background:linear-gradient(135deg,#1a6bea,#3388f5);color:#fff;box-shadow:0 2px 10px rgba(51,136,245,.3); }
+    .btn-primary:hover { transform:translateY(-1px);box-shadow:0 4px 16px rgba(51,136,245,.4); }
+    .btn-primary:disabled { opacity:.6;cursor:not-allowed;transform:none; }
+    .btn-secondary { background:#fff;color:#475569;border:1px solid #e2e8f0; }
+    .btn-secondary:hover { background:#f8fafc; }
+    .btn-outline { background:transparent;color:#3388f5;border:1px solid #3388f5; }
+    .btn-outline:hover { background:#eef6ff; }
+    .alert-error { background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:10px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:8px; }
+    .alert-success { background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:10px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:8px; }
+    .spinner { width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite; }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .status-em-aberto   { background:#fef3c7;color:#92400e;border:1px solid #fde68a; }
+    .status-confirmada  { background:#d1fae5;color:#065f46;border:1px solid #6ee7b7; }
+        @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+const API = 'http://reserva.imbmoradadosol.online/api';
+function getToken() { return localStorage.getItem('iw_token'); }
+function authHeaders(){ return {'Content-Type':'application/json', Authorization:`Bearer ${getToken()}`}; }
+
+/* ─── NAVBAR ──────────────────────────────────────────────────────── */
+function Navbar() {
+  const [cadastrosOpen, setCadastrosOpen] = useState(false);
+  const [diversosOpen, setDiversosOpen]   = useState(false);
+  const cadastrosRef = useRef(null);
+  const diversosRef  = useRef(null);
+  const user = JSON.parse(localStorage.getItem('iw_user') || '{}');
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (cadastrosRef.current && !cadastrosRef.current.contains(e.target)) setCadastrosOpen(false);
+      if (diversosRef.current  && !diversosRef.current.contains(e.target))  setDiversosOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const menuItems = [
+    { label: 'Reservas',   href: './reservas.html' },
+    { label: 'Imóveis',    href: './imoveis.html' },
+    { label: 'Pessoas',    href: './pessoas.html' },
+  ];
+
+  const cadastrosItems = [
+    { label: 'Imóveis Tipos', href: './cadastros.html?tipo=tipos' },
+    { label: 'Municípios/UF', href: './cadastros.html?tipo=municipios' },
+    { label: 'Bancos',        href: './cadastros.html?tipo=bancos' },
+  ];
+
+  const diversosItems = [
+    { label: 'Limpeza',   href: './limpeza-list.html' },
+  ];
+
+  return (
+    <nav className="navbar px-6 py-3 flex items-center justify-between shadow-lg">
+      <div className="flex items-center gap-6">
+        <a href="./login.html" className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:'linear-gradient(135deg,#1a6bea,#3388f5)'}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <span style={{fontFamily:'Syne,sans-serif',fontWeight:800}} className="text-sm text-white">
+            Morada do Sol
+          </span>
+        </a>
+        <div className="hidden md:flex items-center gap-1">
+          {menuItems.map(item => (
+            <a key={item.label} href={item.href}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${item.label==='Reservas'?'text-blue-400':'text-slate-400 hover:text-white hover:bg-white/10'}`}>
+              {item.label}
+            </a>
+          ))}
+          <div className="relative" ref={cadastrosRef}>
+            <button onClick={() => setCadastrosOpen(v => !v)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1">
+              Cadastros
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                style={{transform: cadastrosOpen ? 'rotate(180deg)' : 'rotate(0)', transition:'transform .2s'}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {cadastrosOpen && (
+              <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[160px] z-50"
+                style={{animation:'fadeIn .15s ease'}}>
+                {cadastrosItems.map(item => (
+                  <a key={item.label} href={item.href}
+                    className="block px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors font-medium">
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="relative" ref={diversosRef}>
+            <button onClick={() => setDiversosOpen(v => !v)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1">
+              Diversos
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                style={{transform: diversosOpen ? 'rotate(180deg)' : 'rotate(0)', transition:'transform .2s'}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {diversosOpen && (
+              <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[160px] z-50"
+                style={{animation:'fadeIn .15s ease'}}>
+                {diversosItems.map(item => (
+                  <a key={item.label} href={item.href}
+                    className="block px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors font-medium">
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-slate-400">{user.email}</span>
+        <button onClick={() => { localStorage.clear(); window.location.href='./login.html'; }}
+          className="text-xs px-3 py-1.5 rounded-lg bg-white/10 text-slate-300 hover:bg-white/20 transition-colors">Sair</button>
+      </div>
+    </nav>
+  );
+}
+/* ─── MAIN FORM ───────────────────────────────────────────────────── */
+function ReservaForm() {
+  // Detecta modo (editar vs novo) via URL param ?id=
+  const urlId = new URLSearchParams(window.location.search).get('id');
+  const isEdit = !!urlId;
+
+  const [imoveis,   setImoveis]   = useState([]);
+  const [locatarios,setLocatarios]= useState([]);
+  const [corretores,setCorretores]= useState([]);
+  const [loading,   setLoading]   = useState(false);
+  const [saving,    setSaving]    = useState(false);
+  const [error,     setError]     = useState('');
+  const [success,   setSuccess]   = useState('');
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const [form, setForm] = useState({
+    imovel_id:'', locatario_id:'', corretor_id:'', fiador_id:'',
+    data_entrada: today, data_saida:'', data_limite: today,
+    numero_contrato:'0',
+    num_diarias:0, valor_diaria:'0,00', valor_total:'0,00',
+    adiantamento:'0,00', perc_adiantamento:'0,00', caucao:'0,00',
+    status:'EM ABERTO', tipo_locacao:'DIARIA', eh_proprietario:'NAO',
+    tipo_limpeza:'IMOBILIARIA', taxa_limpeza:'0,00',
+    prestador_id:'', vlr_prestador:'0,00',
+    perc_comissao_prop:'0,00', perc_comissao_corretor:'0,00',
+    perc_comissao_imob:'0,00', perc_comissao_terceiros:'0,00',
+    vlr_comissao_prop:'0,00', vlr_comissao_corretor:'0,00',
+    vlr_comissao_imob:'0,00', vlr_comissao_terceiros:'0,00',
+    obs:'',
+  });
+
+  /* carrega selects */
+  const loadSelects = useCallback(async () => {
+    try {
+      const [im, lc, cr] = await Promise.all([
+        fetch(`${API}/imoveis`, {headers:authHeaders()}).then(r=>r.json()),
+        fetch(`${API}/pessoas?tipo=locatario`, {headers:authHeaders()}).then(r=>r.json()),
+        fetch(`${API}/pessoas?tipo=corretor`,  {headers:authHeaders()}).then(r=>r.json()),
+      ]);
+      setImoveis(Array.isArray(im) ? im : []);
+      setLocatarios(Array.isArray(lc) ? lc : []);
+      setCorretores(Array.isArray(cr) ? cr : []);
+    } catch {}
+  }, []);
+
+  /* carrega reserva para edição */
+  const loadReserva = useCallback(async () => {
+    if (!urlId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/reservas/${urlId}`, {headers:authHeaders()});
+      if (!res.ok) throw new Error();
+      const d = await res.json();
+      const fmt = v => Number(v||0).toFixed(2).replace('.',',');
+      setForm({
+        imovel_id:    d.imovel_id,
+        locatario_id: d.locatario_id,
+        corretor_id:  d.corretor_id  || '',
+        fiador_id:    d.fiador_id    || '',
+        data_entrada: d.data_entrada?.split('T')[0] || '',
+        data_saida:   d.data_saida?.split('T')[0]   || '',
+        data_limite:  d.data_limite?.split('T')[0]  || '',
+        numero_contrato: d.numero_contrato,
+        num_diarias:  d.num_diarias,
+        valor_diaria:  fmt(d.valor_diaria),
+        valor_total:   fmt(d.valor_total),
+        adiantamento:  fmt(d.adiantamento),
+        perc_adiantamento: fmt(d.perc_adiantamento),
+        caucao:        fmt(d.caucao),
+        status:        d.status,
+        tipo_locacao:  d.tipo_locacao,
+        eh_proprietario: d.eh_proprietario ? 'SIM' : 'NAO',
+        tipo_limpeza:  d.tipo_limpeza,
+        taxa_limpeza:  fmt(d.taxa_limpeza),
+        prestador_id:  d.prestador_id || '',
+        vlr_prestador: fmt(d.vlr_prestador),
+        perc_comissao_prop:      fmt(d.perc_comissao_prop),
+        perc_comissao_corretor:  fmt(d.perc_comissao_corretor),
+        perc_comissao_imob:      fmt(d.perc_comissao_imob),
+        perc_comissao_terceiros: fmt(d.perc_comissao_terceiros),
+        vlr_comissao_prop:       fmt(d.vlr_comissao_prop),
+        vlr_comissao_corretor:   fmt(d.vlr_comissao_corretor),
+        vlr_comissao_imob:       fmt(d.vlr_comissao_imob),
+        vlr_comissao_terceiros:  fmt(d.vlr_comissao_terceiros),
+        obs: d.obs || '',
+      });
+    } catch {
+      setError('Erro ao carregar reserva.');
+    } finally {
+      setLoading(false);
+    }
+  }, [urlId]);
+
+  useEffect(() => {
+    loadSelects();
+    loadReserva();
+  }, [loadSelects, loadReserva]);
+
+  /* Helpers */
+  const toNum = s => parseFloat(String(s||'0').replace(',','.')) || 0;
+  const toFmt = n => Number(n).toFixed(2).replace('.',',');
+
+  /* Recalcula diárias e total ao mudar datas ou valor_diaria */
+  function recalcDiarias(f) {
+    if (f.data_entrada && f.data_saida) {
+      const d1 = new Date(f.data_entrada), d2 = new Date(f.data_saida);
+      const dias = Math.max(0, Math.round((d2 - d1) / 86400000));
+      const vd   = toNum(f.valor_diaria);
+      const total = dias * vd;
+      return { ...f, num_diarias: dias, valor_total: toFmt(total) };
+    }
+    return f;
+  }
+
+  /* Recalcula valores de comissão */
+  function recalcComissoes(f) {
+    const total = toNum(f.valor_total);
+    return {
+      ...f,
+      vlr_comissao_prop:      toFmt(total * toNum(f.perc_comissao_prop)      / 100),
+      vlr_comissao_corretor:  toFmt(total * toNum(f.perc_comissao_corretor)  / 100),
+      vlr_comissao_imob:      toFmt(total * toNum(f.perc_comissao_imob)      / 100),
+      vlr_comissao_terceiros: toFmt(total * toNum(f.perc_comissao_terceiros) / 100),
+    };
+  }
+
+  function set(field, value) {
+    setForm(prev => {
+      let next = { ...prev, [field]: value };
+      if (['data_entrada','data_saida','valor_diaria'].includes(field)) next = recalcDiarias(next);
+      if (field.startsWith('perc_comissao') || field === 'valor_total') next = recalcComissoes(next);
+      return next;
+    });
+  }
+
+  /* Autopreenchimento ao selecionar imóvel */
+  async function handleImovelChange(id) {
+    set('imovel_id', id);
+    if (!id) return;
+    try {
+      const res = await fetch(`${API}/imoveis/${id}`, {headers:authHeaders()});
+      const im  = await res.json();
+      setForm(prev => {
+        const next = { ...prev, imovel_id: id, valor_diaria: toFmt(im.valor_diaria), taxa_limpeza: toFmt(im.taxa_limpeza) };
+        return recalcDiarias(next);
+      });
+    } catch {}
+  }
+
+  /* Submit */
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.imovel_id || !form.locatario_id || !form.data_entrada || !form.data_saida) {
+      setError('Preencha imóvel, locatário e datas de entrada/saída.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    const body = {
+      imovel_id:    Number(form.imovel_id),
+      locatario_id: Number(form.locatario_id),
+      corretor_id:  form.corretor_id  ? Number(form.corretor_id)  : null,
+      fiador_id:    form.fiador_id    ? Number(form.fiador_id)    : null,
+      data_entrada: form.data_entrada,
+      data_saida:   form.data_saida,
+      data_limite:  form.data_limite  || null,
+      num_diarias:  Number(form.num_diarias),
+      valor_diaria: toNum(form.valor_diaria),
+      valor_total:  toNum(form.valor_total),
+      adiantamento: toNum(form.adiantamento),
+      perc_adiantamento: toNum(form.perc_adiantamento),
+      caucao:       toNum(form.caucao),
+      status:       form.status,
+      tipo_locacao: form.tipo_locacao,
+      eh_proprietario: form.eh_proprietario === 'SIM',
+      tipo_limpeza: form.tipo_limpeza,
+      taxa_limpeza: toNum(form.taxa_limpeza),
+      prestador_id: form.prestador_id ? Number(form.prestador_id) : null,
+      vlr_prestador: toNum(form.vlr_prestador),
+      perc_comissao_prop:      toNum(form.perc_comissao_prop),
+      perc_comissao_corretor:  toNum(form.perc_comissao_corretor),
+      perc_comissao_imob:      toNum(form.perc_comissao_imob),
+      perc_comissao_terceiros: toNum(form.perc_comissao_terceiros),
+      vlr_comissao_prop:       toNum(form.vlr_comissao_prop),
+      vlr_comissao_corretor:   toNum(form.vlr_comissao_corretor),
+      vlr_comissao_imob:       toNum(form.vlr_comissao_imob),
+      vlr_comissao_terceiros:  toNum(form.vlr_comissao_terceiros),
+      obs: form.obs,
+    };
+
+    try {
+      const url    = isEdit ? `${API}/reservas/${urlId}` : `${API}/reservas`;
+      const method = isEdit ? 'PUT' : 'POST';
+      const res    = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) });
+      const data   = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Erro ao salvar.');
+      setSuccess(isEdit ? 'Reserva atualizada com sucesso!' : `Reserva criada! Contrato #${data.numero_contrato}`);
+      setTimeout(() => window.location.href = './reservas.html', 1500);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /* Renderiza um campo */
+  function Field({ label, children, className='' }) {
+    return (
+      <div className={className}>
+        <label className="field-label">{label}</label>
+        {children}
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div style={{width:32,height:32,border:'3px solid #e2e8f0',borderTopColor:'#3388f5',borderRadius:'50%',animation:'spin .7s linear infinite'}}/>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-100">
+      <Navbar/>
+
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        {/* Header */}
+        <div className="mb-5">
+          <h1 className="text-2xl font-bold text-slate-800" style={{fontFamily:'Syne,sans-serif'}}>
+            {isEdit ? 'Editar' : 'Nova'} Reserva/Locação
+          </h1>
+          {isEdit && (
+            <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-semibold ${form.status==='CONFIRMADA'?'status-confirmada':'status-em-aberto'}`}>
+              {form.status}
+            </span>
+          )}
+        </div>
+
+        {/* Action buttons (top) */}
+        <div className="flex gap-2 mb-5">
+          <button type="button" className="btn-action btn-outline text-xs">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Mapa Ocupação
+          </button>
+          <button type="button" className="btn-action btn-outline text-xs"
+            onClick={() => {
+              if (!form.data_entrada || !form.data_saida) { setError('Informe as datas para validar.'); return; }
+              setError(''); alert(`Período válido: ${form.data_entrada} → ${form.data_saida} (${form.num_diarias} diárias)`);
+            }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Valida (Ent.Saída)
+          </button>
+          <button type="button" className="btn-action btn-outline text-xs"
+            onClick={() => {
+              setForm(prev => recalcComissoes(recalcDiarias(prev)));
+              setSuccess('Valores recalculados!');
+              setTimeout(() => setSuccess(''), 2000);
+            }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Recalcula (% Com.)
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+
+          {/* ── SEÇÃO: VÍNCULOS ─────────────────────────────────────────── */}
+          <div className="card">
+            <p className="section-title">Vínculos</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <Field label="Imóvel *">
+                <select className="field-input field-select" value={form.imovel_id} onChange={e=>handleImovelChange(e.target.value)}>
+                  <option value="">Selecione um registro</option>
+                  {imoveis.map(im => (
+                    <option key={im.id} value={im.id}>
+                      {im.codigo} - {im.tipo} - {im.endereco} - {im.proprietario}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Locatário *">
+                <select className="field-input field-select" value={form.locatario_id} onChange={e=>set('locatario_id',e.target.value)}>
+                  <option value="">Selecione um registro</option>
+                  {locatarios.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+              </Field>
+              <Field label="Corretor">
+                <select className="field-input field-select" value={form.corretor_id} onChange={e=>set('corretor_id',e.target.value)}>
+                  <option value="">Selecione um registro</option>
+                  {corretores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+              </Field>
+              <Field label="Fiador">
+                <select className="field-input field-select" value={form.fiador_id} onChange={e=>set('fiador_id',e.target.value)}>
+                  <option value="">SEM FIADOR</option>
+                  {locatarios.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+              </Field>
+            </div>
+          </div>
+
+          {/* ── SEÇÃO: DATAS & CONTRATO ─────────────────────────────────── */}
+          <div className="card">
+            <p className="section-title">Datas & Contrato</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <Field label="Data Entrada *">
+                <input type="date" className="field-input" value={form.data_entrada} onChange={e=>set('data_entrada',e.target.value)}/>
+              </Field>
+              <Field label="Data Saída *">
+                <input type="date" className="field-input" value={form.data_saida} onChange={e=>set('data_saida',e.target.value)}/>
+              </Field>
+              <Field label="Data Limite">
+                <input type="date" className="field-input" value={form.data_limite} onChange={e=>set('data_limite',e.target.value)}/>
+              </Field>
+              <Field label="Nº Contrato">
+                <input type="text" className="field-input" value={form.numero_contrato} disabled/>
+              </Field>
+            </div>
+          </div>
+
+          {/* ── SEÇÃO: VALORES ──────────────────────────────────────────── */}
+          <div className="card">
+            <p className="section-title">Valores Financeiros</p>
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
+              <Field label="Nº Diárias">
+                <div className="value-display text-center">{form.num_diarias}</div>
+              </Field>
+              <Field label="Valor Diária">
+                <input type="text" className="field-input" value={form.valor_diaria}
+                  onChange={e=>set('valor_diaria',e.target.value)}
+                  onBlur={e=>{const n=toNum(e.target.value);set('valor_diaria',toFmt(n));}}/>
+              </Field>
+              <Field label="Valor Total">
+                <div className="value-display font-bold">{form.valor_total}</div>
+              </Field>
+              <Field label="Adiantamento">
+                <input type="text" className="field-input" value={form.adiantamento}
+                  onChange={e=>set('adiantamento',e.target.value)}
+                  onBlur={e=>set('adiantamento',toFmt(toNum(e.target.value)))}/>
+              </Field>
+              <Field label="% Adiant.">
+                <input type="text" className="field-input" value={form.perc_adiantamento}
+                  onChange={e=>set('perc_adiantamento',e.target.value)}
+                  onBlur={e=>set('perc_adiantamento',toFmt(toNum(e.target.value)))}/>
+              </Field>
+              <Field label="Caução">
+                <input type="text" className="field-input" value={form.caucao}
+                  onChange={e=>set('caucao',e.target.value)}
+                  onBlur={e=>set('caucao',toFmt(toNum(e.target.value)))}/>
+              </Field>
+            </div>
+
+            {/* Status / Tipo / Propriet. / Limpeza */}
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+              <Field label="Status">
+                <select className="field-input field-select" value={form.status} onChange={e=>set('status',e.target.value)}>
+                  <option>EM ABERTO</option>
+                  <option>CONFIRMADA</option>
+                  <option>CANCELADA</option>
+                </select>
+              </Field>
+              <Field label="Tipo Locação">
+                <select className="field-input field-select" value={form.tipo_locacao} onChange={e=>set('tipo_locacao',e.target.value)}>
+                  <option value="DIARIA">DIARIA</option>
+                  <option value="MENSAL">MENSAL</option>
+                  <option value="TEMPORADA">TEMPORADA</option>
+                </select>
+              </Field>
+              <Field label="É Proprietário">
+                <select className="field-input field-select" value={form.eh_proprietario} onChange={e=>set('eh_proprietario',e.target.value)}>
+                  <option value="NAO">NÃO</option>
+                  <option value="SIM">SIM</option>
+                </select>
+              </Field>
+              <Field label="Tipo Limpeza">
+                <select className="field-input field-select" value={form.tipo_limpeza} onChange={e=>set('tipo_limpeza',e.target.value)}>
+                  <option value="IMOBILIARIA">IMOBILIÁRIA</option>
+                  <option value="PROPRIETARIO">PROPRIETÁRIO</option>
+                  <option value="PRESTADOR">PRESTADOR</option>
+                </select>
+              </Field>
+              <Field label="Taxa Limpeza">
+                <input type="text" className="field-input" value={form.taxa_limpeza}
+                  onChange={e=>set('taxa_limpeza',e.target.value)}
+                  onBlur={e=>set('taxa_limpeza',toFmt(toNum(e.target.value)))}/>
+              </Field>
+              <Field label="Vlr. Prest.">
+                <input type="text" className="field-input" value={form.vlr_prestador}
+                  onChange={e=>set('vlr_prestador',e.target.value)}
+                  onBlur={e=>set('vlr_prestador',toFmt(toNum(e.target.value)))}/>
+              </Field>
+            </div>
+          </div>
+
+          {/* ── SEÇÃO: COMISSÕES ────────────────────────────────────────── */}
+          <div className="card">
+            <p className="section-title">Comissões</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              {[
+                {label:'% Com. Proprietário', key:'perc_comissao_prop'},
+                {label:'% Com. Corretor',     key:'perc_comissao_corretor'},
+                {label:'% Com. Imobiliária',  key:'perc_comissao_imob'},
+                {label:'% Com. Terceiros',    key:'perc_comissao_terceiros'},
+              ].map(({label,key}) => (
+                <Field key={key} label={label}>
+                  <input type="text" className="field-input" value={form[key]}
+                    onChange={e=>set(key,e.target.value)}
+                    onBlur={e=>set(key,toFmt(toNum(e.target.value)))}/>
+                </Field>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                {label:'Vlr. Com. Proprietário', key:'vlr_comissao_prop'},
+                {label:'Vlr. Com. Corretor',     key:'vlr_comissao_corretor'},
+                {label:'Vlr. Com. Imobiliária',  key:'vlr_comissao_imob'},
+                {label:'Vlr. Com. Terceiros',    key:'vlr_comissao_terceiros'},
+              ].map(({label,key}) => (
+                <Field key={key} label={label}>
+                  <div className="value-display">{form[key]}</div>
+                </Field>
+              ))}
+            </div>
+          </div>
+
+          {/* ── OBSERVAÇÕES ─────────────────────────────────────────────── */}
+          <div className="card">
+            <p className="section-title">Observações</p>
+            <textarea className="field-input" rows={4} placeholder="Digite as observações para a RESERVA/Locação."
+              value={form.obs} onChange={e=>set('obs',e.target.value)}/>
+          </div>
+
+          {/* Alertas */}
+          {error   && <div className="alert-error   mb-4"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{error}</div>}
+          {success && <div className="alert-success mb-4"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>{success}</div>}
+
+          {/* Footer buttons */}
+          <div className="flex items-center justify-between pb-8">
+            <a href="./reservas.html" className="btn-action btn-secondary text-sm">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              Voltar
+            </a>
+            <button type="submit" disabled={saving} className="btn-action btn-primary text-sm">
+              {saving ? <><div className="spinner"/>&nbsp;Salvando…</> : <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Gravar
+              </>}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<ReservaForm/>);
+</script>
+</body>
+</html>

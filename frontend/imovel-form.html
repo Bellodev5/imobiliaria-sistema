@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MORADA DO SOL — Novo Imóvel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { font-family:'DM Sans',sans-serif; box-sizing:border-box; }
+    body { background:#f1f5f9; margin:0; }
+    .navbar { background:#0d1829; color:#fff; }
+    .field-label { font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.06em; display:block; margin-bottom:4px; }
+    .field-input { width:100%; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; font-size:13px; color:#1e293b; background:#fff; outline:none; transition:all .2s; }
+    .field-input:focus { border-color:#3388f5; box-shadow:0 0 0 3px rgba(51,136,245,.12); }
+    .field-input:disabled { background:#f8fafc; color:#94a3b8; cursor:not-allowed; }
+    .field-select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:28px; }
+    .card { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:16px; box-shadow:0 1px 4px rgba(0,0,0,.04); }
+    .btn-action { display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s; }
+    .btn-primary { background:linear-gradient(135deg,#1a6bea,#3388f5);color:#fff;box-shadow:0 2px 10px rgba(51,136,245,.3); }
+    .btn-primary:hover:not(:disabled) { transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:.6;cursor:not-allowed; }
+    .btn-secondary { background:#fff;color:#475569;border:1px solid #e2e8f0; }
+    .btn-secondary:hover { background:#f8fafc; }
+    .alert-error { background:#fef2f2;border:1px solid#fecaca;color:#dc2626;border-radius:10px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:8px; }
+    .alert-success { background:#f0fdf4;border:1px solid#bbf7d0;color:#15803d;border-radius:10px;padding:12px 16px;font-size:13px;display:flex;align-items:center;gap:8px; }
+    .spinner { width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite; }
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+const API = 'http://reserva.imbmoradadosol.online/api';
+function getToken() { return localStorage.getItem('iw_token'); }
+function authHeaders(){ return {'Content-Type':'application/json', Authorization:`Bearer ${getToken()}`}; }
+
+function Navbar() {
+  const [cadastrosOpen, setCadastrosOpen] = useState(false);
+  const [diversosOpen, setDiversosOpen]   = useState(false);
+  const cadastrosRef = useRef(null);
+  const diversosRef  = useRef(null);
+  const user = JSON.parse(localStorage.getItem('iw_user') || '{}');
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (cadastrosRef.current && !cadastrosRef.current.contains(e.target)) setCadastrosOpen(false);
+      if (diversosRef.current  && !diversosRef.current.contains(e.target))  setDiversosOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const menuItems = [
+    { label: 'Reservas',   href: './reservas.html' },
+    { label: 'Imóveis',    href: './imoveis.html' },
+    { label: 'Pessoas',    href: './pessoas.html' },
+  ];
+
+  const cadastrosItems = [
+    { label: 'Imóveis Tipos', href: './cadastros.html?tipo=tipos' },
+    { label: 'Municípios/UF', href: './cadastros.html?tipo=municipios' },
+    { label: 'Bancos',        href: './cadastros.html?tipo=bancos' },
+  ];
+
+  const diversosItems = [
+    { label: 'Limpeza',   href: './limpeza-list.html' },
+  ];
+
+  return (
+    <nav className="navbar px-6 py-3 flex items-center justify-between shadow-lg">
+      <div className="flex items-center gap-6">
+        <a href="./login.html" className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{background:'linear-gradient(135deg,#1a6bea,#3388f5)'}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <span style={{fontFamily:'Syne,sans-serif',fontWeight:800}} className="text-sm text-white">
+            Morada do Sol
+          </span>
+        </a>
+        <div className="hidden md:flex items-center gap-1">
+          {menuItems.map(item => (
+            <a key={item.label} href={item.href}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${item.label==='Imóveis'?'text-blue-400':'text-slate-400 hover:text-white hover:bg-white/10'}`}>
+              {item.label}
+            </a>
+          ))}
+          <div className="relative" ref={cadastrosRef}>
+            <button onClick={() => setCadastrosOpen(v => !v)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1">
+              Cadastros
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                style={{transform: cadastrosOpen ? 'rotate(180deg)' : 'rotate(0)', transition:'transform .2s'}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {cadastrosOpen && (
+              <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[160px] z-50"
+                style={{animation:'fadeIn .15s ease'}}>
+                {cadastrosItems.map(item => (
+                  <a key={item.label} href={item.href}
+                    className="block px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors font-medium">
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="relative" ref={diversosRef}>
+            <button onClick={() => setDiversosOpen(v => !v)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1">
+              Diversos
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                style={{transform: diversosOpen ? 'rotate(180deg)' : 'rotate(0)', transition:'transform .2s'}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {diversosOpen && (
+              <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[160px] z-50"
+                style={{animation:'fadeIn .15s ease'}}>
+                {diversosItems.map(item => (
+                  <a key={item.label} href={item.href}
+                    className="block px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors font-medium">
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-slate-400">{user.email}</span>
+        <button onClick={() => { localStorage.clear(); window.location.href='./login.html'; }}
+          className="text-xs px-3 py-1.5 rounded-lg bg-white/10 text-slate-300 hover:bg-white/20 transition-colors">Sair</button>
+      </div>
+    </nav>
+  );
+}
+
+function ImovelForm() {
+  const urlId = new URLSearchParams(window.location.search).get('id');
+  const isEdit = !!urlId;
+
+  const [tipos, setTipos]       = useState([]);
+  const [loading, setLoading]   = useState(false);
+  const [saving, setSaving]     = useState(false);
+  const [error, setError]       = useState('');
+  const [success, setSuccess]   = useState('');
+  const [cepLoading, setCepLoading] = useState(false);
+
+  // Estado unificado do formulário
+  const [form, setForm] = useState({
+    codigo:'', tipo:'', proprietario:'', referencia:'',
+    cep:'', endereco:'', numero:'', complemento:'', bairro:'', municipio:'', estado:'',
+    disp_venda:'NAO', vlr_venda:'0,00', disp_locacao:'NAO', vlr_locacao:'0,00',
+    locado:'NAO', reservado:'NAO', vendido:'NAO',
+    perc_prop:'0,00', perc_corretor:'0,00', perc_imob:'0,00', perc_terceiros:'0,00',
+    telefone:'NAO', tipo_limpeza:'IMOBILIARIA', vlr_limpeza:'0,00',
+    inventario:'NAO', obs:'',
+  });
+
+  const loadTipos = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/tipos`, {headers:authHeaders()});
+      const data = await res.json();
+      setTipos(Array.isArray(data) ? data : []);
+    } catch {}
+  }, []);
+
+  // Utilitários de conversão numérica robustos
+  const toNum = (val) => {
+    if (val === null || val === undefined || val === '') return 0;
+    const str = String(val).replace(',', '.').replace(/[^\d.-]/g, '');
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
+  };
+
+  const toFmt = (val) => {
+    const num = toNum(val);
+    return num.toFixed(2).replace('.', ',');
+  };
+
+  const loadImovel = useCallback(async () => {
+    if (!urlId) return;
+    setLoading(true);
+    try {
+      const token = getToken();
+      if (!token) {
+        window.location.href = './login.html';
+        return;
+      }
+
+      const res = await fetch(`${API}/imoveis/${urlId}`, { headers: authHeaders() });
+
+      if (res.status === 401) {
+        window.location.href = './login.html';
+        return;
+      }
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Erro ao carregar imóvel.');
+      }
+
+      const d = await res.json();
+
+      // Converte booleanos para "SIM"/"NAO"
+      const boolToSimNao = (val) => (val ? 'SIM' : 'NAO');
+
+      setForm({
+        codigo: d.codigo,
+        tipo: d.tipo,
+        proprietario: d.proprietario || '',
+        referencia: d.codigo,
+        cep: d.cep || '',
+        endereco: d.endereco || '',
+        numero: d.numero || '',
+        complemento: d.complemento || '',
+        bairro: d.bairro || '',
+        municipio: d.cidade || '',
+        estado: d.estado || 'SC',
+        disp_venda: boolToSimNao(d.disponivel_venda),
+        vlr_venda: toFmt(d.vlr_venda),
+        disp_locacao: boolToSimNao(d.disponivel_locacao),
+        vlr_locacao: toFmt(d.vlr_locacao),
+        locado: boolToSimNao(d.locado),
+        reservado: boolToSimNao(d.reservado),
+        vendido: boolToSimNao(d.vendido),
+        perc_prop: toFmt(d.perc_comissao_proprietario),
+        perc_corretor: toFmt(d.perc_comissao_corretor),
+        perc_imob: toFmt(d.perc_comissao_imobiliaria),
+        perc_terceiros: toFmt(d.perc_comissao_terceiros),
+        telefone: boolToSimNao(d.telefone),
+        tipo_limpeza: d.tipo_limpeza || 'IMOBILIARIA',
+        vlr_limpeza: toFmt(d.taxa_limpeza),
+        inventario: boolToSimNao(d.inventario),
+        obs: d.obs || '',
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [urlId]);
+
+  useEffect(() => {
+    loadTipos();
+    loadImovel();
+  }, [loadTipos, loadImovel]);
+
+  function set(field, value) {
+    setForm(prev => ({ ...prev, [field]: value }));
+  }
+
+  // Controle de preenchimento automático via CEP
+  const [cepFilled, setCepFilled] = useState({
+    endereco: false,
+    bairro: false,
+    municipio: false,
+    estado: false,
+  });
+
+  async function handleCepBlur() {
+    const cep = form.cep.replace(/\D/g, '');
+    if (cep.length !== 8) return;
+    setCepLoading(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await res.json();
+      if (data.erro) throw new Error();
+
+      const updates = {};
+      const filled = {};
+
+      if (data.logradouro) { updates.endereco = data.logradouro; filled.endereco = true; }
+      if (data.bairro)     { updates.bairro = data.bairro; filled.bairro = true; }
+      if (data.localidade) { updates.municipio = data.localidade; filled.municipio = true; }
+      if (data.uf)         { updates.estado = data.uf; filled.estado = true; } // sigla
+
+      setForm(prev => ({ ...prev, ...updates }));
+      setCepFilled(filled);
+    } catch {
+      alert('CEP não encontrado.');
+    } finally {
+      setCepLoading(false);
+    }
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.codigo || !form.tipo || !form.proprietario) {
+      setError('Preencha código, tipo e proprietário.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    // Converte "SIM"/"NAO" para boolean
+    const simNaoToBool = (v) => v === 'SIM';
+
+    const body = {
+      codigo: form.codigo,
+      tipo: form.tipo,
+      endereco: form.endereco,
+      numero: form.numero,
+      complemento: form.complemento,
+      bairro: form.bairro,
+      cidade: form.municipio,
+      estado: form.estado,                     // já é sigla
+      proprietario: form.proprietario,
+      cep: form.cep || null,
+      disponivel_venda: simNaoToBool(form.disp_venda),
+      vlr_venda: toNum(form.vlr_venda),
+      disponivel_locacao: simNaoToBool(form.disp_locacao),
+      vlr_locacao: toNum(form.vlr_locacao),
+      locado: simNaoToBool(form.locado),
+      reservado: simNaoToBool(form.reservado),
+      vendido: simNaoToBool(form.vendido),
+      perc_comissao_proprietario: toNum(form.perc_prop),
+      perc_comissao_corretor: toNum(form.perc_corretor),
+      perc_comissao_imobiliaria: toNum(form.perc_imob),
+      perc_comissao_terceiros: toNum(form.perc_terceiros),
+      telefone: simNaoToBool(form.telefone),
+      tipo_limpeza: form.tipo_limpeza,
+      taxa_limpeza: toNum(form.vlr_limpeza),
+      inventario: simNaoToBool(form.inventario),
+      obs: form.obs || null,
+    };
+
+    try {
+      const url = isEdit ? `${API}/imoveis/${urlId}` : `${API}/imoveis`;
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Erro ao salvar.');
+      setSuccess(isEdit ? 'Imóvel atualizado!' : 'Imóvel criado com sucesso!');
+      setTimeout(() => window.location.href = './imoveis.html', 1500);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div style={{width:32,height:32,border:'3px solid #e2e8f0',borderTopColor:'#3388f5',borderRadius:'50%',animation:'spin .7s linear infinite'}}/>
+      </div>
+    );
+  }
+
+  // Lista de estados com sigla e nome
+  const estados = [
+    { sigla: 'AC', nome: 'ACRE' }, { sigla: 'AL', nome: 'ALAGOAS' },
+    { sigla: 'AP', nome: 'AMAPÁ' }, { sigla: 'AM', nome: 'AMAZONAS' },
+    { sigla: 'BA', nome: 'BAHIA' }, { sigla: 'CE', nome: 'CEARÁ' },
+    { sigla: 'DF', nome: 'DISTRITO FEDERAL' }, { sigla: 'ES', nome: 'ESPÍRITO SANTO' },
+    { sigla: 'GO', nome: 'GOIÁS' }, { sigla: 'MA', nome: 'MARANHÃO' },
+    { sigla: 'MT', nome: 'MATO GROSSO' }, { sigla: 'MS', nome: 'MATO GROSSO DO SUL' },
+    { sigla: 'MG', nome: 'MINAS GERAIS' }, { sigla: 'PA', nome: 'PARÁ' },
+    { sigla: 'PB', nome: 'PARAÍBA' }, { sigla: 'PR', nome: 'PARANÁ' },
+    { sigla: 'PE', nome: 'PERNAMBUCO' }, { sigla: 'PI', nome: 'PIAUÍ' },
+    { sigla: 'RJ', nome: 'RIO DE JANEIRO' }, { sigla: 'RN', nome: 'RIO GRANDE DO NORTE' },
+    { sigla: 'RS', nome: 'RIO GRANDE DO SUL' }, { sigla: 'RO', nome: 'RONDÔNIA' },
+    { sigla: 'RR', nome: 'RORAIMA' }, { sigla: 'SC', nome: 'SANTA CATARINA' },
+    { sigla: 'SP', nome: 'SÃO PAULO' }, { sigla: 'SE', nome: 'SERGIPE' },
+    { sigla: 'TO', nome: 'TOCANTINS' }
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-100">
+      <Navbar/>
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className="mb-5">
+          <h1 className="text-2xl font-bold text-slate-800" style={{fontFamily:'Syne,sans-serif'}}>
+            {isEdit ? 'Editar' : 'Novo'} Imóvel
+          </h1>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          {/* Linha 1 - Proprietário, Tipo, Referência */}
+          <div className="card">
+            <div className="grid grid-cols-3 gap-4">
+              <div><label className="field-label">Proprietário</label>
+                <input type="text" className="field-input" value={form.proprietario} onChange={e=>set('proprietario',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Tipo *</label>
+                <select className="field-input field-select" value={form.tipo} onChange={e=>set('tipo',e.target.value)}>
+                  <option value="">SELECIONE TIPO</option>
+                  {tipos.map(t => <option key={t.sigla} value={t.sigla}>{t.sigla} - {t.descricao}</option>)}
+                </select>
+              </div>
+              <div><label className="field-label">Referência *</label>
+                <input type="text" className="field-input" value={form.codigo} onChange={e=>set('codigo',e.target.value)}/>
+              </div>
+            </div>
+          </div>
+
+          {/* Endereço */}
+          <div className="card">
+            <div className="grid grid-cols-12 gap-4 mb-4">
+              <div className="col-span-3"><label className="field-label">CEP</label>
+                <div className="flex gap-2">
+                  <input type="text" className="field-input" value={form.cep} onChange={e=>set('cep',e.target.value)}
+                    onBlur={handleCepBlur} placeholder="00000-000"/>
+                  {cepLoading && <div className="spinner" style={{width:20,height:20,marginTop:6}}/>}
+                </div>
+              </div>
+              <div className="col-span-7"><label className="field-label">Endereço</label>
+                <input type="text" className="field-input" disabled={cepFilled.endereco} value={form.endereco} onChange={e=>set('endereco',e.target.value)}/>
+              </div>
+              <div className="col-span-2"><label className="field-label">Número</label>
+                <input type="text" className="field-input" value={form.numero} onChange={e=>set('numero',e.target.value)}/>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-4">
+              <div><label className="field-label">Complemento</label>
+                <input type="text" className="field-input" value={form.complemento} onChange={e=>set('complemento',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Bairro</label>
+                <input type="text" className="field-input" disabled={cepFilled.bairro} value={form.bairro} onChange={e=>set('bairro',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Município</label>
+                <input type="text" className="field-input" disabled={cepFilled.municipio} value={form.municipio} onChange={e=>set('municipio',e.target.value)}/>
+              </div>
+              <div><label className="field-label">Estado</label>
+                <select className="field-input field-select" disabled={cepFilled.estado} value={form.estado} onChange={e=>set('estado',e.target.value)}>
+                  <option value="">Selecione o estado</option>
+                  {estados.map(e => <option key={e.sigla} value={e.sigla}>{e.nome}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Disponibilidade e Valores */}
+          <div className="card">
+            <div className="grid grid-cols-6 gap-4 mb-4">
+              <div><label className="field-label">Disponível Venda</label>
+                <select className="field-input field-select" value={form.disp_venda} onChange={e=>set('disp_venda',e.target.value)}>
+                  <option>NÃO</option><option>SIM</option>
+                </select>
+              </div>
+              <div><label className="field-label">Vlr. Venda</label>
+                <input type="text" className="field-input" value={form.vlr_venda}
+                  onChange={e=>set('vlr_venda',e.target.value)}
+                  onBlur={e=>set('vlr_venda',toFmt(e.target.value))}/>
+              </div>
+              <div><label className="field-label">Disponível Locação</label>
+                <select className="field-input field-select" value={form.disp_locacao} onChange={e=>set('disp_locacao',e.target.value)}>
+                  <option>NÃO</option><option>SIM</option>
+                </select>
+              </div>
+              <div><label className="field-label">Vlr. Locação</label>
+                <input type="text" className="field-input" value={form.vlr_locacao}
+                  onChange={e=>set('vlr_locacao',e.target.value)}
+                  onBlur={e=>set('vlr_locacao',toFmt(e.target.value))}/>
+              </div>
+              <div><label className="field-label">Locado</label>
+                <select className="field-input field-select" value={form.locado} onChange={e=>set('locado',e.target.value)}>
+                  <option>NÃO</option><option>SIM</option>
+                </select>
+              </div>
+              <div><label className="field-label">Reservado</label>
+                <select className="field-input field-select" value={form.reservado} onChange={e=>set('reservado',e.target.value)}>
+                  <option>NÃO</option><option>SIM</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-5 gap-4">
+              <div><label className="field-label">Vendido</label>
+                <select className="field-input field-select" value={form.vendido} onChange={e=>set('vendido',e.target.value)}>
+                  <option>NÃO</option><option>SIM</option>
+                </select>
+              </div>
+              <div><label className="field-label">% Com. Proprietário</label>
+                <input type="text" className="field-input" value={form.perc_prop}
+                  onChange={e=>set('perc_prop',e.target.value)}
+                  onBlur={e=>set('perc_prop',toFmt(e.target.value))}/>
+              </div>
+              <div><label className="field-label">% Com. Corretor</label>
+                <input type="text" className="field-input" value={form.perc_corretor}
+                  onChange={e=>set('perc_corretor',e.target.value)}
+                  onBlur={e=>set('perc_corretor',toFmt(e.target.value))}/>
+              </div>
+              <div><label className="field-label">% Com. Imobiliária</label>
+                <input type="text" className="field-input" value={form.perc_imob}
+                  onChange={e=>set('perc_imob',e.target.value)}
+                  onBlur={e=>set('perc_imob',toFmt(e.target.value))}/>
+              </div>
+              <div><label className="field-label">% Com. Terceiros</label>
+                <input type="text" className="field-input" value={form.perc_terceiros}
+                  onChange={e=>set('perc_terceiros',e.target.value)}
+                  onBlur={e=>set('perc_terceiros',toFmt(e.target.value))}/>
+              </div>
+            </div>
+          </div>
+
+          {/* Limpeza */}
+          <div className="card">
+            <div className="grid grid-cols-3 gap-4">
+              <div><label className="field-label">Telefone</label>
+                <select className="field-input field-select" value={form.telefone} onChange={e=>set('telefone',e.target.value)}>
+                  <option>NÃO</option><option>SIM</option>
+                </select>
+              </div>
+              <div><label className="field-label">Tipo Limpeza</label>
+                <select className="field-input field-select" value={form.tipo_limpeza} onChange={e=>set('tipo_limpeza',e.target.value)}>
+                  <option>IMOBILIARIA</option><option>PROPRIETARIO</option><option>TERCEIROS</option>
+                </select>
+              </div>
+              <div><label className="field-label">Vlr. Limpeza</label>
+                <input type="text" className="field-input" value={form.vlr_limpeza}
+                  onChange={e=>set('vlr_limpeza',e.target.value)}
+                  onBlur={e=>set('vlr_limpeza',toFmt(e.target.value))}/>
+              </div>
+            </div>
+          </div>
+
+          {/* Observações */}
+          <div className="card">
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="field-label">Inventário</label>
+                <select className="field-input field-select" value={form.inventario} onChange={e=>set('inventario',e.target.value)}>
+                  <option value="NAO">NÃO</option>
+                  <option value="SIM">SIM</option>
+                </select>
+              </div>
+              <div><label className="field-label">Observações</label>
+                <textarea className="field-input" rows={4} value={form.obs} onChange={e=>set('obs',e.target.value)}/>
+              </div>
+            </div>
+          </div>
+
+          {error   && <div className="alert-error mb-4"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{error}</div>}
+          {success && <div className="alert-success mb-4"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>{success}</div>}
+
+          <div className="flex items-center justify-between pb-8">
+            <a href="./imoveis.html" className="btn-action btn-secondary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              Voltar
+            </a>
+            <button type="submit" disabled={saving} className="btn-action btn-primary">
+              {saving ? <><div className="spinner"/>&nbsp;Salvando…</> : <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Gravar
+              </>}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<ImovelForm/>);
+</script>
+</body>
+</html>
