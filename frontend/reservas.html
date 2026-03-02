@@ -37,10 +37,18 @@
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect, useCallback, useRef } = React;
-const API = 'http://reserva.imbmoradadosol.online/api';
-function getToken() { return localStorage.getItem('iw_token'); }
+const API = 'http://reserva.imbmoradadosol.online/api';function getToken() { return localStorage.getItem('iw_token'); }
 function authHeaders() { return { 'Content-Type':'application/json', Authorization:`Bearer ${getToken()}` }; }
-
+// Função segura para formatar datas
+const formatarData = (dataStr) => {
+  if (!dataStr) return '—';
+  const parteData = String(dataStr).split('T')[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(parteData)) {
+    const [ano, mes, dia] = parteData.split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
+  return '—';
+};
 function Navbar() {
   const [cadastrosOpen, setCadastrosOpen] = useState(false);
   const [diversosOpen, setDiversosOpen]   = useState(false);
@@ -61,6 +69,7 @@ function Navbar() {
     { label: 'Reservas',   href: './reservas.html' },
     { label: 'Imóveis',    href: './imoveis.html' },
     { label: 'Pessoas',    href: './pessoas.html' },
+    { label: 'Relatórios',    href: './relatorios.html' }
   ];
 
   const cadastrosItems = [
@@ -296,8 +305,8 @@ function ReservasList() {
                       <td className="text-xs font-mono font-semibold text-slate-700">{r.numero_contrato}</td>
                       <td className="text-xs text-slate-700">{r.locatario_nome}</td>
                       <td className="text-xs text-slate-600">{r.imovel_codigo} - {r.imovel_tipo}</td>
-                      <td className="text-xs text-slate-600">{formatDate(r.data_entrada)}</td>
-                      <td className="text-xs text-slate-600">{formatDate(r.data_saida)}</td>
+                      <td className="text-xs text-slate-600">{formatarData(r.data_entrada)}</td>
+                      <td className="text-xs text-slate-600">{formatarData(r.data_saida)}</td>
                       <td className="text-xs text-slate-700 font-semibold">R$ {formatBRL(r.valor_total)}</td>
                       <td>
                         <span className={badgeCls(r.status)}>{r.status}</span>

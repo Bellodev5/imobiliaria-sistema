@@ -35,8 +35,7 @@
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
-const API = 'http://reserva.imbmoradadosol.online/api';
-function getToken() { return localStorage.getItem('iw_token'); }
+const API = 'http://reserva.imbmoradadosol.online/api';function getToken() { return localStorage.getItem('iw_token'); }
 function authHeaders(){ return {'Content-Type':'application/json', Authorization:`Bearer ${getToken()}`}; }
 
 function Navbar() {
@@ -59,7 +58,9 @@ function Navbar() {
     { label: 'Reservas',   href: './reservas.html' },
     { label: 'Imóveis',    href: './imoveis.html' },
     { label: 'Pessoas',    href: './pessoas.html' },
+    { label: 'Relatórios',    href: './relatorios.html' }
   ];
+
 
   const cadastrosItems = [
     { label: 'Imóveis Tipos', href: './cadastros.html?tipo=tipos' },

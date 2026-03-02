@@ -36,10 +36,17 @@
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect,useRef } = React;
-const API = 'http://reserva.imbmoradadosol.online/api';
-function getToken() { return localStorage.getItem('iw_token'); }
+const API = 'http://reserva.imbmoradadosol.online/api';function getToken() { return localStorage.getItem('iw_token'); }
 function authHeaders(){ return { Authorization:`Bearer ${getToken()}` }; }
-
+const formatarData = (dataStr) => {
+  if (!dataStr) return '—';
+  const parteData = String(dataStr).split('T')[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(parteData)) {
+    const [ano, mes, dia] = parteData.split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
+  return '—';
+};
 function Navbar() {
   const [cadastrosOpen, setCadastrosOpen] = useState(false);
   const [diversosOpen, setDiversosOpen]   = useState(false);
@@ -60,7 +67,9 @@ function Navbar() {
     { label: 'Reservas',   href: './reservas.html' },
     { label: 'Imóveis',    href: './imoveis.html' },
     { label: 'Pessoas',    href: './pessoas.html' },
+    { label: 'Relatórios',    href: './relatorios.html' }
   ];
+
 
   const cadastrosItems = [
     { label: 'Imóveis Tipos', href: './cadastros.html?tipo=tipos' },
@@ -189,7 +198,7 @@ function LimpezaList() {
     } catch {}
   }
 
-  const fmtDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+  const fmtDate = formatarData;
   const fmtBRL  = v => v != null ? `R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '—';
 
   return (
